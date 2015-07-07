@@ -1,0 +1,29 @@
+{
+  "name": "styluslint",
+  "description": "lint your css code",
+  "version": "0.1.1-beta.2",
+  "keywords": [
+    "styluslint",
+    "stylushint",
+    "lint",
+    "hint"
+  ],
+  "maintainers": [
+    {
+      "name": "ielgnaw",
+      "email": "wuji0223@gmail.com"
+    }
+  ],
+  "dependencies": {
+  },
+  "devDependencies": {
+  },
+  "scripts": {
+  },
+  "bin": {
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:ecomfe/node-styluslint.git"
+  }
+}

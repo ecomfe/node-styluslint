@@ -1,19 +1,9 @@
 /* operator associations and precedence */
 
-%{
-    /* JavaScript util package here */
-    var variables = [];
-    var resultAst = {
-        variables: [],
-        nodes: []
-    };
-%}
-
-
-%left EOF
-%left NL
-%left SPACE
-%left IDENT
+// %left EOF
+// %left NL
+// %left SPACE
+// %left IDENT
 
 %start root
 %%
@@ -94,21 +84,72 @@ kvs
     ;
 
 kv
-    : IDENT COLON IDENT
-        {
-            var tmp = {
-                name: $1,
-                originVal: $3
-            };
-
-            $$ = [].concat(tmp);
-        }
-    | IDENT COLON IDENT SEMICOLON
+    : IDENT COLON IDENT NL  // prop: value \n
         {
             var tmp = {
                 name: $1,
                 originVal: $3,
-                hasSemicolon: true
+                hasColon: true,
+                after: $4
+            };
+
+            $$ = [].concat(tmp);
+        }
+    | IDENT COLON IDENT SEMICOLON // prop: value;
+        {
+            var tmp = {
+                name: $1,
+                originVal: $3,
+                hasSemicolon: true,
+                hasColon: true,
+                after: $4
+            };
+
+            $$ = [].concat(tmp);
+        }
+    | IDENT COLON IDENT SEMICOLONANDNL // prop: value; \n
+        {
+            var tmp = {
+                name: $1,
+                originVal: $3,
+                hasSemicolon: true,
+                hasColon: true,
+                after: $4.slice(1)
+            };
+
+            $$ = [].concat(tmp);
+        }
+    | IDENT IDENT NL // prop value \n
+        {
+            var tmp = {
+                name: $1,
+                originVal: $2,
+                hasColon: false,
+                after: $3
+            };
+
+            $$ = [].concat(tmp);
+        }
+    | IDENT IDENT SEMICOLON // prop value;
+        {
+            var tmp = {
+                name: $1,
+                originVal: $2,
+                hasSemicolon: true,
+                hasColon: false,
+                after: $4
+            };
+
+            $$ = [].concat(tmp);
+        }
+    | IDENT IDENT SEMICOLONANDNL // prop value; \n
+        {
+            var tmp = {
+                name: $1,
+                originVal: $2,
+                hasSemicolon: true,
+                hasColon: false,
+                after: $4.slice(1)
             };
 
             $$ = [].concat(tmp);
@@ -116,53 +157,11 @@ kv
     | NL
     ;
 
-// node
-//     : IDENT
-//         {
-//             $$ = {
-//                 type: 'IDENT'
-//             }
-//         }
-//     | SPACE
-//         {
-//             $$ = {
-//                 type: 'SPACE'
-//             }
-//         }
-//     | NL
-//         {
-//             $$ = {
-//                 type: 'NL'
-//             }
-//         }
-//     | node IDENT
-//         {
-//             if (!$$.nodes) {
-//                 $$.nodes = [];
-//             }
-//             $2 = {
-//                 type: 'IDENT1'
-//             }
-//             $$.nodes.push($2);
-//         }
-//     | node SPACE
-//         {
-//             if (!$$.nodes) {
-//                 $$.nodes = [];
-//             }
-//             $2 = {
-//                 type: 'SPACE1'
-//             }
-//             $$.nodes.push($2);
-//         }
-//     | node NL
-//         {
-//             if (!$$.nodes) {
-//                 $$.nodes = [];
-//             }
-//             $2 = {
-//                 type: 'NL1'
-//             }
-//             $$.nodes.push($2);
-//         }
-//     ;
+%%
+
+/* JavaScript util package here */
+var variables = [];
+var resultAst = {
+    variables: [],
+    nodes: []
+};

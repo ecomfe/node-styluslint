@@ -15,13 +15,18 @@
     }
   ],
   "dependencies": {
+    "stylus": "^0.51.1"
   },
   "devDependencies": {
+    "jison": "^0.4.15"
   },
   "scripts": {
+    "lint": "fecs lib cli test/**/*.spec.js --type=js",
+    "coverage": "istanbul cover jasmine-node --captureExceptions test/**/*.spec.js",
+    "test": "npm run lint && npm run coverage",
+    "coveralls": "cat ./coverage/lcov.info | coveralls"
   },
-  "bin": {
-  },
+  "bin": {},
   "repository": {
     "type": "git",
     "url": "git@github.com:ecomfe/node-styluslint.git"

@@ -47,7 +47,8 @@ line
             block = {
                 selector: $1,
                 children: [],
-                nodes: []
+                props: [],
+                indentCount: 0
             };
             resultAst.nodes.push(block);
             $$ = resultAst;
@@ -80,22 +81,26 @@ line
         }
     | line IDENT NL
         {
+            // 另一个顶级 block 了
             if ($1.selector) {
+                // console.warn($1, $2);
+                // console.warn();
                 block = {
                     selector: $2,
                     children: [],
-                    nodes: []
+                    props: []
                 };
                 resultAst.nodes.push(block);
-                $$ = resultAst;
             }
             else {
-                block.nodes.push({
-                    prop: $1,
+                block.props.push({
+                    before: $1.before,
+                    parent: $1.parent,
+                    prop: $1.name,
                     value: $2
                 });
-                $$ = block;
             }
+            $$ = block;
             console.warn(chalk.cyan('line -> line IDENT NL'));
         }
     | line IDENT space
@@ -110,20 +115,44 @@ line
         }
     | line space IDENT NL
         {
+            // console.warn($1, $3, $2.length);
             // console.warn($1, '11111');
+            // console.warn($2.length);
             // console.warn($3, '33333');
             // console.warn(resultAst, 'resultAst');
-            block = {
-                selector: $3,
-                children: [],
-                nodes: []
-            };
-            $1.children.push(block);
+
+            // 同一层级
+            if ($1.indentCount === $2.length) {
+                block = {
+                    selector: $3,
+                    children: [],
+                    props: [],
+                    indentCount: $2.length,
+                    parent: $1
+                };
+                $1.parent.children.push(block);
+            }
+            else {
+                block = {
+                    selector: $3,
+                    children: [],
+                    props: [],
+                    indentCount: $2.length,
+                    parent: $1
+                };
+                $1.children.push(block);
+            }
+
             console.warn(chalk.cyan('line -> line space IDENT NL'));
         }
     | line space IDENT space
         {
-            $$ = $3;
+            // console.warn($1);
+            // $$ = $3;
+            $$ = {
+                before: $2.length,
+                name: $3
+            };
             console.warn(chalk.cyan('line -> line space IDENT space'));
         }
     | line space IDENT space NL
@@ -132,27 +161,6 @@ line
             console.warn(chalk.cyan('line -> line space IDENT space NL'));
         }
     ;
-
-// space IDENT space
-//         {
-//             indentMark = $1.length;
-//             console.warn(chalk.cyan('selector -> space IDENT space'));
-//         }
-//     | space IDENT NL
-//         {
-//             indentMark = $1.length;
-//             console.warn(chalk.cyan('selector -> space IDENT NL'));
-//         }
-//     | IDENT space
-//         {
-//             console.warn(chalk.cyan('selector -> IDENT space'));
-//         }
-//     | IDENT NL
-//         {
-//             console.warn(chalk.cyan('selector -> IDENT NL'));
-//         }
-//     ;
-
 
 space
     : SPACE

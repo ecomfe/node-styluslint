@@ -10,6 +10,9 @@
 
     var indentMark = 0;
     var block = {};
+
+    // 上一行
+    var prevLine = {};
 %}
 
 /* operator associations and precedence */
@@ -93,12 +96,24 @@ line
                 resultAst.nodes.push(block);
             }
             else {
-                block.props.push({
+                // console.warn($1, block, prevLine);
+                if ($1.before > prevLine.before) {
+                    var props = block.props;
+                    for (var i = 0, len = props.length; i < len; i++) {
+                        if (props[i].prop === prevLine.prop) {
+                            props.splice(i, 1);
+                            break;
+                        }
+                    }
+                    block.selector += (' ' + prevLine.prop + ' ' + prevLine.value);
+                }
+
+                prevLine = {
                     before: $1.before,
-                    parent: $1.parent,
                     prop: $1.name,
                     value: $2
-                });
+                };
+                block.props.push(prevLine);
             }
             $$ = block;
             console.warn(chalk.cyan('line -> line IDENT NL'));

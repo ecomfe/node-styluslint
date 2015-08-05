@@ -19,8 +19,12 @@
     "stylus": "^0.51.1"
   },
   "devDependencies": {
+    "circular-json": "^0.1.6",
     "jison": "^0.4.15",
-    "json-stringify-safe": "^5.0.1"
+    "jison-lex": "^0.3.4",
+    "json-circular": "0.0.1",
+    "json-stringify-safe": "^5.0.1",
+    "lex": "^1.7.8"
   },
   "scripts": {
     "lint": "fecs lib cli test/**/*.spec.js --type=js",

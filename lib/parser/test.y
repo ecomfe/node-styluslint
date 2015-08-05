@@ -1,18 +1,32 @@
 %{
+    var util = require('../util');
+    var chalk = require('chalk');
+
     /* JavaScript util package here */
     var variables = [];
     var resultAst = {
         variables: [],
-        nodes: []
+        nodes: [],
+        selectors: []
     };
-
-    var chalk = require('chalk');
 
     var indentMark = 0;
     var block = {};
 
     // 上一行
     var prevLine = {};
+
+    function debugYY(ruleStr, actionStr) {
+        console.log(chalk.yellow(ruleStr + ': ') + chalk.cyan(actionStr));
+        console.warn();
+    }
+
+    var curSelector = null;
+    // var curProp = null;
+
+    // 记录 selector 是否 push 到 resultAst.selectors 中
+    var selectors = {};
+
 %}
 
 /* operator associations and precedence */
@@ -30,7 +44,7 @@
 %%
 
 root
-    : line EOF
+    : lines EOF
         {
             return {
                 root: resultAst
@@ -44,7 +58,172 @@ root
         }
     ;
 
+lines
+    : line NL
+        {
+            debugYY('lines', 'line NL');
+        }
+    | lines line NL
+        {
+            if ($1.type === 'selector' && $2.type === 'selector') {
+                return;
+            }
+
+            if (!selectors[curSelector.name]) {
+                selectors[curSelector.name] = curSelector;
+                resultAst.selectors.push(curSelector);
+            }
+
+
+            // 说明 $2 是一个子选择器
+            if ($2.values.length === 0) {
+                util.removeArrByCondition($1.props, function (item) {
+                    return item.name === $2.name;
+                });
+                $2.parent = null;
+                $2.type = 'selector';
+                $2.props = [];
+                delete $2.values;
+                curSelector = JSON.parse(JSON.stringify($2));
+                if (!selectors[curSelector.name]) {
+                    selectors[curSelector.name] = curSelector;
+                }
+                $1.children.push(curSelector);
+            }
+
+            // console.warn($1);
+            // console.warn($2);
+            // console.warn(curSelector);
+            debugYY('lines', 'lines line NL');
+        }
+    ;
+
 line
+    : IDENT
+        {
+            curSelector = {
+                name: $1,
+                indentCount: 0,
+                type: 'selector',
+                loc: {
+                    firstLine: @1.first_line,
+                    lastLine: @1.last_line,
+                    firstCol: @1.first_column,
+                    lastCol: @1.last_column
+                },
+                props: [],
+                children: [],
+                parent: null
+            };
+            $$ = curSelector;
+            debugYY('line', 'IDENT');
+        }
+    | IDENT space
+        {
+            debugYY('line', 'IDENT space');
+        }
+    | space IDENT
+        {
+            // console.warn($2, curSelector);
+            if (!curSelector) {
+                curSelector = {
+                    name: $2,
+                    indentCount: 0,
+                    type: 'selector',
+                    loc: {
+                        firstLine: @1.first_line,
+                        lastLine: @1.last_line,
+                        firstCol: @1.first_column,
+                        lastCol: @1.last_column
+                    },
+                    props: [],
+                    children: []
+                };
+                $$ = curSelector;
+            }
+            else {
+                // console.warn($2, curSelector);
+                var re = /^([\t]*)[ \t]*/;
+                var captures = re.exec($1);
+
+                // nope, try spaces
+                if (captures && !captures[1].length) {
+                    re = /^([ \t]*)/;
+                    captures = re.exec($1);
+                }
+
+                if (captures && captures[1].length) {
+                    $$ = {
+                        name: $2,
+                        indentRe: re,
+                        indentCount: captures[1].length,
+                        type: 'prop',
+                        loc: {
+                            firstLine: @2.first_line,
+                            lastLine: @2.last_line,
+                            firstCol: @2.first_column,
+                            lastCol: @2.last_column
+                        },
+                        parent: curSelector,
+                        values: []
+                    };
+                    // curProp = $$;
+                    curSelector.props.push($$);
+                }
+            }
+            debugYY('line', 'space IDENT');
+        }
+    | space IDENT space
+        {
+            debugYY('line', 'space IDENT space');
+        }
+    | line IDENT
+        {
+            debugYY('line', 'line IDENT');
+        }
+    | line IDENT space
+        {
+            debugYY('line', 'line IDENT space');
+        }
+    | line space IDENT
+        {
+            if ($1.type === 'prop') {
+                $1.values.push($2 + $3);
+                // $$ = {
+                //     name: $1.name,
+                //     indentCount: $1.indentCount,
+                //     indentRe: $1.indentRe,
+                //     type: $1.type,
+                //     parent: $1.parent,
+                //     value: $3
+                // };
+                // curSelector.props.push($$);
+            }
+            else {
+                var loc = $1.loc;
+                loc.lastCol = @3.last_column;
+                curSelector = {
+                    name: $1.name + $2 + $3,
+                    indentCount: 0,
+                    type: $1.type,
+                    loc: loc,
+                    props: [],
+                    children: []
+                };
+                $$ = curSelector;
+            }
+            debugYY('line', 'line space IDENT');
+        }
+    | line space IDENT space
+        {
+            debugYY('line', 'line space IDENT space');
+        }
+    ;
+
+
+
+
+/*line
     : IDENT NL
         {
             block = {
@@ -59,7 +238,14 @@ line
         }
     | IDENT space
         {
-            $$ = $1;
+            block = {
+                selector: $1,
+                children: [],
+                props: [],
+                indentCount: 0
+            };
+            resultAst.nodes.push(block);
+            $$ = resultAst;
             console.warn(chalk.cyan('line -> IDENT sapce'));
         }
     | IDENT space NL
@@ -84,37 +270,51 @@ line
         }
     | line IDENT NL
         {
-            // 另一个顶级 block 了
-            if ($1.selector) {
-                // console.warn($1, $2);
-                // console.warn();
-                block = {
-                    selector: $2,
-                    children: [],
-                    props: []
-                };
-                resultAst.nodes.push(block);
+            var firstLine1 = @1.first_line;
+            var lastLine1 = @1.last_line;
+            var firstLine2 = @2.first_line;
+            var lastLine2 = @2.last_line;
+            console.warn($1, $2);
+            // 同一行的选择器
+            if (firstLine1 === firstLine2
+                && lastLine1 === lastLine2
+            ) {
+                block.selector += (' ' + ((typeof $1 === 'string') ? $1 + ' ' : '') + $2);
             }
             else {
-                // console.warn($1, block, prevLine);
-                if ($1.before > prevLine.before) {
-                    var props = block.props;
-                    for (var i = 0, len = props.length; i < len; i++) {
-                        if (props[i].prop === prevLine.prop) {
-                            props.splice(i, 1);
-                            break;
-                        }
-                    }
-                    block.selector += (' ' + prevLine.prop + ' ' + prevLine.value);
+                // 另一个顶级 block 了
+                if ($1.selector) {
+                    // console.warn($1, $2);
+                    // console.warn();
+                    block = {
+                        selector: $2,
+                        children: [],
+                        props: []
+                    };
+                    resultAst.nodes.push(block);
                 }
+                else {
+                    // console.warn($1, block, prevLine);
+                    if ($1.before > prevLine.before) {
+                        var props = block.props;
+                        for (var i = 0, len = props.length; i < len; i++) {
+                            if (props[i].prop === prevLine.prop) {
+                                props.splice(i, 1);
+                                break;
+                            }
+                        }
+                        block.selector += (' ' + prevLine.prop + ' ' + prevLine.value);
+                    }
 
-                prevLine = {
-                    before: $1.before,
-                    prop: $1.name,
-                    value: $2
-                };
-                block.props.push(prevLine);
+                    prevLine = {
+                        before: $1.before,
+                        prop: $1.name,
+                        value: $2
+                    };
+                    block.props.push(prevLine);
+                }
             }
+
             $$ = block;
             console.warn(chalk.cyan('line -> line IDENT NL'));
         }
@@ -130,12 +330,6 @@ line
         }
     | line space IDENT NL
         {
-            // console.warn($1, $3, $2.length);
-            // console.warn($1, '11111');
-            // console.warn($2.length);
-            // console.warn($3, '33333');
-            // console.warn(resultAst, 'resultAst');
-
             // 同一层级
             if ($1.indentCount === $2.length) {
                 block = {
@@ -175,7 +369,7 @@ line
             $$ = $3;
             console.warn(chalk.cyan('line -> line space IDENT space NL'));
         }
-    ;
+    ;*/
 
 space
     : SPACE
